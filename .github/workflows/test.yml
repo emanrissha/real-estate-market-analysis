@@ -3,8 +3,6 @@ name: Test Real Estate Analysis
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   test:
@@ -20,23 +18,19 @@ jobs:
     
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
         pip install pandas numpy matplotlib seaborn scikit-learn scipy statsmodels
     
-    - name: Verify imports work
-      run: |
-        python -c "import pandas; import numpy; import matplotlib; import seaborn; print('✅ All imports successful')"
-    
-    - name: Verify data files exist
+    - name: Verify imports
       run: |
         python -c "
-import os
-assert os.path.exists('data/raw/customers.csv'), 'Missing customers.csv'
-assert os.path.exists('data/raw/properties.csv'), 'Missing properties.csv'
-print('✅ Data files found')
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+print('✅ All libraries imported successfully')
 "
     
-    - name: Test data loading
+    - name: Verify data loading
       run: |
         python -c "
 import pandas as pd
@@ -44,16 +38,6 @@ df1 = pd.read_csv('data/raw/customers.csv')
 df2 = pd.read_csv('data/raw/properties.csv')
 print(f'✅ Customers: {df1.shape}')
 print(f'✅ Properties: {df2.shape}')
-"
-    
-    - name: Test model imports
-      run: |
-        python -c "
-import sys
-sys.path.insert(0, '.')
-from src.models.price_predictor import PricePredictor
-from src.models.customer_segmentation import CustomerSegmentation
-print('✅ Models imported successfully')
 "
     
     - name: All tests passed

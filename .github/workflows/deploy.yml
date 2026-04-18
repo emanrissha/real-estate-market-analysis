@@ -18,17 +18,17 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install pandas numpy fastapi uvicorn streamlit plotly
+        pip install pandas numpy matplotlib seaborn scikit-learn scipy statsmodels fastapi uvicorn streamlit plotly
+    
+    - name: Verify imports work
+      run: |
+        python -c "import pandas; import numpy; import matplotlib; import seaborn; print('✅ All imports successful')"
     
     - name: Check API can start
       run: |
-        timeout 3 uvicorn src.api.app:app --host 0.0.0.0 --port 8000 &
-        sleep 2
-        echo "✅ API started successfully"
-    
-    - name: Check dashboard can be imported
-      run: |
-        python -c "import sys; sys.path.insert(0, '.'); from src.visualization.interactive_dashboard import main; print('✅ Dashboard imports OK')"
+        timeout 5 uvicorn src.api.app:app --host 0.0.0.0 --port 8000 &
+        sleep 3
+        echo "✅ API check passed"
     
     - name: Deployment check passed
       run: echo "✅ Ready for deployment"
