@@ -1,0 +1,27 @@
+project:
+  name: "Real Estate Market Analysis"
+  version: "2.0.0"
+  
+data:
+  raw_path: "data/raw/"
+  processed_path: "data/processed/"
+  
+files:
+  customers: "customers.csv"
+  properties: "properties.csv"
+  
+cleaning:
+  handle_missing: "drop"
+  missing_values: ["NA", "N/A", "null", "", "NULL"]
+  
+age_bins:
+  bins: [19, 25, 31, 36, 42, 48, 54, 59, 65, 71, 76]
+  labels: ["19-25", "25-31", "31-36", "36-42", "42-48", "48-54", "54-59", "59-65", "65-71", "71-76"]
+  
+price_bins:
+  n_bins: 10
+  
+visualization:
+  style: "seaborn-v0_8-whitegrid"
+  figsize: [10, 6]
+  dpi: 300

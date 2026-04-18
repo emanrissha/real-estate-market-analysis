@@ -1,0 +1,43 @@
+# Model Configuration Parameters
+
+price_predictor:
+  model_type: random_forest
+  n_estimators: 100
+  max_depth: 10
+  random_state: 42
+  test_size: 0.2
+  features:
+    - area
+    - age
+    - mortgage_binary
+    - deal_satisfaction
+
+customer_segmentation:
+  n_clusters: 4
+  random_state: 42
+  features:
+    - age
+    - price
+    - deal_satisfaction
+  scaling: standard
+
+satisfaction_classifier:
+  model_type: random_forest
+  n_estimators: 50
+  max_depth: 5
+  random_state: 42
+  test_size: 0.2
+
+time_series_forecast:
+  model_type: prophet
+  forecast_days: 30
+  seasonality_mode: additive
+  yearly_seasonality: true
+  weekly_seasonality: false
+
+training:
+  cross_validation_folds: 5
+  random_seed: 42
+  verbose: true
+  save_models: true
+  models_path: models/
