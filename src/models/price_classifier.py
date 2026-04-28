@@ -1,21 +1,19 @@
 """
-Price prediction model using Gradient Boosting
-Predicts price per unit area from property features
+Price segment classifier - predicts Low / Medium / High price tier
 """
 
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_absolute_error, r2_score, mean_squared_error
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 import joblib
 
 
-class PricePredictor:
+class PriceClassifier:
     def __init__(self):
-        self.model = GradientBoostingRegressor(
-            n_estimators=300, random_state=42,
-            max_depth=4, learning_rate=0.05
+        self.model = GradientBoostingClassifier(
+            n_estimators=200, random_state=42, max_depth=3
         )
         self.features = [
             'house_age', 'mrt_distance', 'convenience_stores',
@@ -23,11 +21,12 @@ class PricePredictor:
             'distance_from_center'
         ]
         self.features_used = None
+        self.labels = ['Low', 'Medium', 'High']
 
     def prepare(self, df):
         available = [f for f in self.features if f in df.columns]
         X = df[available].fillna(df[available].mean())
-        y = df['price_per_unit']
+        y = df['price_segment_encoded']
         return X, y, available
 
     def train(self, df):
@@ -35,22 +34,23 @@ class PricePredictor:
         self.features_used = features
 
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
+            X, y, test_size=0.2, random_state=42, stratify=y
         )
 
         self.model.fit(X_train, y_train)
 
         y_pred = self.model.predict(X_test)
-        mae  = mean_absolute_error(y_test, y_pred)
-        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-        r2   = r2_score(y_test, y_pred)
-        cv   = cross_val_score(self.model, X, y, cv=5, scoring='r2')
+        accuracy = accuracy_score(y_test, y_pred)
+        cv = cross_val_score(self.model, X, y, cv=5, scoring='accuracy')
 
-        print(f"\n📊 Price Predictor Results:")
-        print(f"   MAE:      {mae:.4f}")
-        print(f"   RMSE:     {rmse:.4f}")
-        print(f"   R²:       {r2:.4f}")
-        print(f"   CV R²:    {cv.mean():.4f} (+/- {cv.std():.4f})")
+        print(f"\n📊 Price Classifier Results:")
+        print(f"   Accuracy:    {accuracy:.4f}")
+        print(f"   CV Accuracy: {cv.mean():.4f} (+/- {cv.std():.4f})")
+        print(f"\n   Classification Report:")
+        print(classification_report(y_test, y_pred,
+                                    target_names=self.labels))
+        print(f"   Confusion Matrix:")
+        print(confusion_matrix(y_test, y_pred))
 
         importance = dict(zip(features, self.model.feature_importances_))
         importance_sorted = dict(sorted(importance.items(),
@@ -60,9 +60,13 @@ class PricePredictor:
             print(f"     {f}: {v:.4f}")
 
         return {
-            'mae': mae, 'rmse': rmse, 'r2': r2,
-            'cv_r2_mean': cv.mean(), 'cv_r2_std': cv.std(),
-            'importance': importance
+            'accuracy': accuracy,
+            'cv_accuracy_mean': cv.mean(),
+            'cv_accuracy_std': cv.std(),
+            'importance': importance,
+            'report': classification_report(y_test, y_pred,
+                                            target_names=self.labels,
+                                            output_dict=True)
         }
 
     def predict(self, house_age, mrt_distance, convenience_stores,
@@ -72,14 +76,15 @@ class PricePredictor:
             house_age, mrt_distance, convenience_stores,
             latitude, longitude, log_mrt, distance_from_center
         ]], columns=self.features_used)
-        return float(self.model.predict(data)[0])
+        pred = self.model.predict(data)[0]
+        return self.labels[pred]
 
     def save_model(self, path):
         joblib.dump({'model': self.model, 'features_used': self.features_used}, path)
-        print(f"✅ Price predictor saved to {path}")
+        print(f"✅ Price classifier saved to {path}")
 
     def load_model(self, path):
         saved = joblib.load(path)
         self.model = saved['model']
         self.features_used = saved['features_used']
-        print(f"✅ Price predictor loaded from {path}")
+        print(f"✅ Price classifier loaded from {path}")

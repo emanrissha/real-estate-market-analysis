@@ -1,83 +1,193 @@
 """
-Additional API endpoints for specific analyses
+FastAPI route handlers
 """
 
-from fastapi import APIRouter, Query
-from typing import List, Dict, Any
+from fastapi import APIRouter, HTTPException
 import pandas as pd
-from pathlib import Path
+import numpy as np
+import os
 
-router = APIRouter(prefix="/v1", tags=["analysis"])
+from src.api.schemas import (
+    PricePredictRequest, PricePredictResponse,
+    ClassifyPriceRequest, ClassifyPriceResponse,
+    SegmentRequest, SegmentResponse,
+    ForecastResponse, StatisticsResponse, HealthResponse
+)
 
-# Load data
-try:
-    df = pd.read_csv('data/processed/merged_real_estate.csv')
-except:
-    df = None
+router = APIRouter()
 
-@router.get("/analysis/by-building")
-async def analysis_by_building():
-    """Get statistics grouped by building type"""
-    if df is None:
-        return {"error": "Data not available"}
-    
-    result = df.groupby('building').agg({
-        'price': ['mean', 'min', 'max'],
-        'deal_satisfaction': 'mean',
-        'customerid': 'count'
-    }).round(2)
-    
-    return result.to_dict()
+# --- Globals (loaded once at startup) ---
+_price_predictor   = None
+_price_classifier  = None
+_segmentation      = None
+_forecast          = None
+_df                = None
 
-@router.get("/analysis/by-country")
-async def analysis_by_country():
-    """Get statistics grouped by country"""
-    if df is None:
-        return {"error": "Data not available"}
-    
-    result = df.groupby('country').agg({
-        'price': 'mean',
-        'deal_satisfaction': 'mean',
-        'customerid': 'count'
-    }).round(2)
-    
-    result.columns = ['avg_price', 'avg_satisfaction', 'count']
-    return result.to_dict()
 
-@router.get("/analysis/top-states")
-async def top_states(limit: int = Query(5, ge=1, le=20)):
-    """Get top states by number of properties"""
-    if df is None:
-        return {"error": "Data not available"}
-    
-    top = df['state'].value_counts().head(limit).reset_index()
-    top.columns = ['state', 'count']
-    return top.to_dict('records')
+def load_models():
+    """Load all models and dataset into memory"""
+    global _price_predictor, _price_classifier, _segmentation, _forecast, _df
 
-@router.get("/analysis/age-distribution")
-async def age_distribution():
-    """Get age distribution of customers"""
-    if df is None or 'age' not in df.columns:
-        return {"error": "Age data not available"}
-    
+    from src.models.price_predictor      import PricePredictor
+    from src.models.price_classifier     import PriceClassifier
+    from src.models.location_segmentation import LocationSegmentation
+    from src.models.time_series_forecast  import TimeSeriesForecast
+
+    models_status = {}
+
+    try:
+        _price_predictor = PricePredictor()
+        _price_predictor.load_model('models/price_predictor.pkl')
+        models_status['price_predictor'] = 'loaded'
+    except Exception as e:
+        models_status['price_predictor'] = f'error: {e}'
+
+    try:
+        _price_classifier = PriceClassifier()
+        _price_classifier.load_model('models/price_classifier.pkl')
+        models_status['price_classifier'] = 'loaded'
+    except Exception as e:
+        models_status['price_classifier'] = f'error: {e}'
+
+    try:
+        _segmentation = LocationSegmentation()
+        _segmentation.load_model('models/location_segments.pkl')
+        models_status['segmentation'] = 'loaded'
+    except Exception as e:
+        models_status['segmentation'] = f'error: {e}'
+
+    try:
+        _forecast = TimeSeriesForecast()
+        _forecast.load_model('models/forecast_model.pkl')
+        models_status['forecast'] = 'loaded'
+    except Exception as e:
+        models_status['forecast'] = f'error: {e}'
+
+    try:
+        _df = pd.read_csv('data/processed/real_estate_clean.csv')
+        models_status['dataset'] = f'{len(_df)} rows'
+    except Exception as e:
+        models_status['dataset'] = f'error: {e}'
+
+    return models_status
+
+
+# --- Routes ---
+
+@router.get('/', tags=['General'])
+def root():
     return {
-        "min_age": int(df['age'].min()),
-        "max_age": int(df['age'].max()),
-        "mean_age": float(df['age'].mean()),
-        "median_age": float(df['age'].median())
+        'name': 'Real Estate Market Analysis API',
+        'version': '1.0.0',
+        'endpoints': [
+            '/health', '/statistics',
+            '/predict/price', '/predict/segment',
+            '/classify/price', '/forecast'
+        ]
     }
 
-@router.get("/analysis/price-range")
-async def price_range():
-    """Get price distribution statistics"""
-    if df is None:
-        return {"error": "Data not available"}
-    
-    return {
-        "min_price": float(df['price'].min()),
-        "max_price": float(df['price'].max()),
-        "mean_price": float(df['price'].mean()),
-        "median_price": float(df['price'].median()),
-        "percentile_25": float(df['price'].quantile(0.25)),
-        "percentile_75": float(df['price'].quantile(0.75))
-    }
+
+@router.get('/health', response_model=HealthResponse, tags=['General'])
+def health():
+    status = load_models()
+    return HealthResponse(
+        status='ok',
+        models_loaded=status,
+        dataset_rows=len(_df) if _df is not None else 0
+    )
+
+
+@router.get('/statistics', response_model=StatisticsResponse, tags=['Analysis'])
+def statistics():
+    if _df is None:
+        raise HTTPException(status_code=503, detail='Dataset not loaded')
+    return StatisticsResponse(
+        total_properties=len(_df),
+        avg_price_per_unit=round(float(_df['price_per_unit'].mean()), 2),
+        median_price_per_unit=round(float(_df['price_per_unit'].median()), 2),
+        min_price=round(float(_df['price_per_unit'].min()), 2),
+        max_price=round(float(_df['price_per_unit'].max()), 2),
+        avg_mrt_distance=round(float(_df['mrt_distance'].mean()), 2),
+        avg_house_age=round(float(_df['house_age'].mean()), 2),
+        avg_convenience_stores=round(float(_df['convenience_stores'].mean()), 2)
+    )
+
+
+@router.post('/predict/price', response_model=PricePredictResponse, tags=['Prediction'])
+def predict_price(req: PricePredictRequest):
+    if _price_predictor is None:
+        raise HTTPException(status_code=503, detail='Price predictor not loaded')
+    try:
+        dist_center = np.sqrt(
+            (req.latitude  - 24.9692) ** 2 +
+            (req.longitude - 121.5357) ** 2
+        )
+        prediction = _price_predictor.predict(
+            req.house_age, req.mrt_distance,
+            req.convenience_stores, req.latitude,
+            req.longitude, dist_center
+        )
+        return PricePredictResponse(
+            predicted_price_per_unit=round(prediction, 2),
+            confidence='R² = 0.77 on test set, CV R² = 0.60',
+            note='Price per unit area in 10,000 NTD'
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/classify/price', response_model=ClassifyPriceResponse, tags=['Prediction'])
+def classify_price(req: ClassifyPriceRequest):
+    if _price_classifier is None:
+        raise HTTPException(status_code=503, detail='Price classifier not loaded')
+    try:
+        dist_center = np.sqrt(
+            (req.latitude  - 24.9692) ** 2 +
+            (req.longitude - 121.5357) ** 2
+        )
+        segment = _price_classifier.predict(
+            req.house_age, req.mrt_distance,
+            req.convenience_stores, req.latitude,
+            req.longitude, dist_center
+        )
+        return ClassifyPriceResponse(
+            price_segment=segment,
+            segments=['Low', 'Medium', 'High']
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/predict/segment', response_model=SegmentResponse, tags=['Prediction'])
+def predict_segment(req: SegmentRequest):
+    if _segmentation is None:
+        raise HTTPException(status_code=503, detail='Segmentation model not loaded')
+    try:
+        result = _segmentation.predict(
+            req.latitude, req.longitude,
+            req.mrt_distance, req.convenience_stores,
+            req.price_per_unit
+        )
+        return SegmentResponse(
+            segment_id=result['segment'],
+            segment_label=result['label']
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/forecast', response_model=ForecastResponse, tags=['Analysis'])
+def forecast(months_ahead: int = 6):
+    if _forecast is None:
+        raise HTTPException(status_code=503, detail='Forecast model not loaded')
+    if not 1 <= months_ahead <= 24:
+        raise HTTPException(status_code=400, detail='months_ahead must be between 1 and 24')
+    try:
+        result = _forecast.forecast(months_ahead)
+        return ForecastResponse(
+            forecast=result,
+            months_ahead=months_ahead,
+            note='Forecast based on linear trend with cyclical seasonality encoding'
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

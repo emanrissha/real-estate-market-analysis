@@ -1,121 +1,129 @@
-# 🏠 Real Estate Market Analysis
+# Real Estate Market Analysis
 
-[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
-## 📊 Project Overview
-
-An end-to-end **advanced real estate market analysis** project that processes property transactions and customer satisfaction data. The project includes data cleaning, exploratory analysis, machine learning models, REST API, interactive dashboard, and production-ready deployment.
-
-### Key Features
-- ✅ Data cleaning and preprocessing (pandas, numpy)
-- ✅ Descriptive statistics and aggregations
-- ✅ Age and price correlation analysis
-- ✅ **4 Machine Learning Models** (Price Prediction, Customer Segmentation, Satisfaction Classification, Time Series Forecast)
-- ✅ **REST API** with FastAPI (8+ endpoints)
-- ✅ **Interactive Dashboard** with Streamlit
-- ✅ **Unit Tests** with pytest (30+ tests)
-- ✅ **Docker** containerization
-- ✅ **CI/CD** pipeline with GitHub Actions
+End-to-end machine learning project analyzing Taiwan's real estate market.
+Predicts property prices, classifies price tiers, segments locations,
+and forecasts market trends — served via a production REST API.
 
 ---
 
-## 📁 Project Structure
-real-estate-market-analysis/
-├── data/
-│ ├── raw/ # Raw CSV files
-│ └── processed/ # Cleaned and merged data
-├── src/
-│ ├── data/ # Data loading & cleaning
-│ ├── features/ # Feature engineering
-│ ├── analysis/ # Statistical analysis
-│ ├── models/ # ML models (4)
-│ ├── visualization/ # Charts & dashboard
-│ └── api/ # FastAPI endpoints
-├── tests/ # Unit tests (30+)
-├── reports/ # Generated CSV & PNG
-├── notebooks/ # Jupyter notebooks
-├── config/ # YAML configurations
-├── docker/ # Docker files
-├── scripts/ # Automation scripts
-└── .github/workflows/ # CI/CD pipelines
+## Dataset
+**Taiwan Real Estate Dataset** — 414 properties, New Taipei City (2012–2013)  
+Source: [Kaggle](https://www.kaggle.com/datasets/quantbruce/real-estate-price-prediction)
 
-text
+Features: transaction date, house age, MRT distance,
+convenience stores, GPS coordinates, price per unit area.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### 1. Clone the Repository
+### 1. Clone
 ```bash
 git clone https://github.com/yourusername/real-estate-market-analysis.git
 cd real-estate-market-analysis
-2. Install Dependencies
-bash
-pip install -r requirements/base.txt
-pip install -r requirements/dev.txt
-pip install -r requirements/prod.txt
-3. Run the Full Pipeline
-bash
+```
+
+### 2. Install
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Run Pipeline
+```bash
 python scripts/run_pipeline.py
-4. Train All ML Models
-bash
+```
+
+### 4. Train Models
+```bash
 python scripts/train_models.py
-5. Run Tests
-bash
-pytest tests/ -v
-🔌 API Endpoints
-Method	Endpoint	Description
-GET	/	API information
-GET	/health	Health check
-POST	/predict_price	Predict property price
-POST	/predict_segment	Predict customer segment
-GET	/properties	Get property list
-GET	/statistics	Get summary statistics
-GET	/v1/analysis/by-building	Building type analysis
-GET	/v1/analysis/by-country	Country analysis
-Start API
-bash
+```
+
+### 5. Start API
+```bash
 uvicorn src.api.app:app --reload --host 0.0.0.0 --port 8000
-📊 Interactive Dashboard
-bash
-streamlit run src/visualization/interactive_dashboard.py
-🐳 Docker Deployment
-bash
-# Build image
-docker build -t real-estate-analysis -f docker/Dockerfile .
+```
 
-# Run with docker-compose
+### 6. Run Tests
+```bash
+pytest tests/ -v
+```
+
+### 7. Docker
+```bash
 docker-compose -f docker/docker-compose.yml up
-📈 Model Performance
-Model	Metric	Score
-Price Predictor	R² Score	0.8521
-Price Predictor	MAE	$27,691
-Customer Segmentation	Clusters	4 segments
-Satisfaction Classifier	Accuracy	~85%
-📊 Key Insights
-Age-Price Correlation: -0.175 (weak negative)
+```
 
-Most Active Age Group: 31-36 years
+---
 
-Top State: California (66.3% of properties)
+## Project Structure
+├── data/               # Raw + processed data
+├── src/
+│   ├── data/           # Loader + preprocessor
+│   ├── models/         # 4 ML models
+│   ├── explainability/ # SHAP explainer
+│   ├── analysis/       # Insights + statistical tests
+│   ├── visualization/  # Chart generation
+│   └── api/            # FastAPI app
+├── models/             # Saved model files
+├── reports/            # CSVs + figures
+├── tests/              # 35+ unit tests
+├── scripts/            # Pipeline + training scripts
+└── docker/             # Dockerfiles + compose
 
-Top Country: USA (84.6% of properties)
+---
 
-🛠️ Technologies Used
-Category	Technologies
-Data Processing	pandas, numpy
-ML & Analysis	scikit-learn, scipy, statsmodels
-Visualization	matplotlib, seaborn, plotly, streamlit
-API	FastAPI, uvicorn
-Testing	pytest
-Container	Docker, Docker Compose
-CI/CD	GitHub Actions
-📝 License
-MIT License
+## API Endpoints
 
-👥 Author
-Your Name
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/` | API info |
+| GET | `/health` | Health check + model status |
+| GET | `/statistics` | Dataset summary statistics |
+| POST | `/predict/price` | Predict price per unit area |
+| POST | `/classify/price` | Classify as Low/Medium/High |
+| POST | `/predict/segment` | Predict location segment |
+| GET | `/forecast` | Revenue forecast (N months) |
 
-⭐ Star this repository if you find it useful!
+API docs available at `http://localhost:8000/docs`
+
+---
+
+## Model Performance
+
+| Model | Metric | Score |
+|---|---|---|
+| Price Predictor (GradientBoosting) | R² | 0.77 |
+| Price Predictor | CV R² | 0.60 ± 0.13 |
+| Price Classifier | Accuracy | 76% |
+| Price Classifier | CV Accuracy | 73% ± 3% |
+| Location Segmentation (KMeans) | Silhouette | 0.36 |
+| Time Series Forecast | R² | 0.73 |
+
+---
+
+## Key Findings
+- **MRT proximity is the #1 price driver** — properties within 500m cost 57% more
+- **Convenience stores strongly correlate with price** — r=0.57, p<0.001
+- **New homes command 45% premium** over middle-aged properties
+- **4 distinct market segments** identified by location + price + amenities
+
+See [RESULTS.md](RESULTS.md) for full analysis.
+
+---
+
+## Technologies
+
+| Category | Tools |
+|---|---|
+| Data | pandas, numpy |
+| ML | scikit-learn, scipy |
+| Explainability | SHAP |
+| API | FastAPI, uvicorn, pydantic |
+| Testing | pytest, httpx |
+| Visualization | matplotlib |
+| Deployment | Docker, GitHub Actions |
+
+---
+
+## License
+MIT

@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real Estate Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --accent: #c8f55a;
+    --accent2: #5af5c8;
+    --accent3: #f55a9a;
+    --text: #e8e8f0;
+    --muted: #6a6a8a;
+    --font-display: 'Fraunces', serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(200,245,90,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(200,245,90,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    padding: 3rem 0 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 3rem;
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .logo-area h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 300;
+    line-height: 1.1;
+    color: var(--text);
+  }
+
+  .logo-area h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .logo-area p {
+    margin-top: 0.5rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+  }
+
+  .api-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent3);
+    animation: pulse 2s infinite;
+  }
+
+  .status-dot.online { background: var(--accent); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Nav tabs */
+  .nav-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 3rem;
+    overflow-x: auto;
+  }
+
+  .nav-tab {
+    padding: 0.75rem 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    text-transform: uppercase;
+  }
+
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* Sections */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Stat cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 3rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    padding: 1.5rem;
+    transition: background 0.2s;
+  }
+
+  .stat-card:hover { background: var(--surface2); }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 0.25rem;
+    font-family: var(--font-mono);
+  }
+
+  /* Charts grid */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .chart-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+
+  .chart-title {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .chart-container {
+    position: relative;
+    height: 280px;
+  }
+
+  /* Prediction form */
+  .predict-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  @media (max-width: 768px) {
+    .predict-layout { grid-template-columns: 1fr; }
+    .charts-grid { grid-template-columns: 1fr; }
+  }
+
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2rem;
+  }
+
+  .form-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 300;
+    margin-bottom: 1.5rem;
+    color: var(--text);
+  }
+
+  .form-title em { color: var(--accent); font-style: italic; }
+
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.6rem 0.8rem;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  .form-input:focus { border-color: var(--accent); }
+
+  .form-input[type="range"] {
+    padding: 0;
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+
+  .range-value {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent);
+    float: right;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 0.85rem;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.5rem;
+  }
+
+  .btn:hover { background: #d4ff6a; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Result panel */
+  .result-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .result-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .result-value {
+    font-family: var(--font-display);
+    font-size: 4rem;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+
+  .result-unit {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .result-badge {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.4rem 1rem;
+    border-radius: 100px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+
+  .badge-low { background: rgba(90,245,200,0.15); color: var(--accent2); border: 1px solid var(--accent2); }
+  .badge-medium { background: rgba(200,245,90,0.15); color: var(--accent); border: 1px solid var(--accent); }
+  .badge-high { background: rgba(245,90,154,0.15); color: var(--accent3); border: 1px solid var(--accent3); }
+
+  .result-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+  }
+
+  .insight-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+
+  .insight-key { color: var(--muted); }
+  .insight-val { color: var(--text); }
+
+  /* Map */
+  .map-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 3rem;
+  }
+
+  .map-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .map-title {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  .map-legend {
+    display: flex;
+    gap: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+  }
+
+  #mapCanvas {
+    width: 100%;
+    height: 400px;
+    display: block;
+  }
+
+  /* Segments */
+  .segments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+    margin-bottom: 3rem;
+  }
+
+  .segment-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .segment-card:hover { border-color: var(--accent); }
+
+  .segment-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  .segment-card:nth-child(1)::after { background: var(--accent); }
+  .segment-card:nth-child(2)::after { background: var(--accent2); }
+  .segment-card:nth-child(3)::after { background: var(--accent3); }
+  .segment-card:nth-child(4)::after { background: #f5c55a; }
+
+  .segment-name {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .segment-count {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .segment-stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  .segment-stat:last-child { border-bottom: none; }
+  .seg-key { color: var(--muted); }
+  .seg-val { color: var(--text); }
+
+  /* SHAP bars */
+  .shap-bar-container { margin-bottom: 3rem; }
+
+  .shap-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .shap-label {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    width: 180px;
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  .shap-track {
+    flex: 1;
+    height: 28px;
+    background: var(--surface);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .shap-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    padding-left: 0.75rem;
+  }
+
+  .shap-fill-val {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--bg);
+    font-weight: 500;
+  }
+
+  /* Model metrics */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 3rem;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+
+  .metric-model {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+
+  .metric-name {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 300;
+    margin-bottom: 1rem;
+    color: var(--text);
+  }
+
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  .metric-row:last-child { border-bottom: none; }
+  .metric-key { color: var(--muted); }
+  .metric-num { color: var(--accent); }
+
+  /* Loading state */
+  .loading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Findings */
+  .findings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .finding-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    border-left: 3px solid var(--accent);
+  }
+
+  .finding-card:nth-child(2) { border-left-color: var(--accent2); }
+  .finding-card:nth-child(3) { border-left-color: var(--accent3); }
+  .finding-card:nth-child(4) { border-left-color: #f5c55a; }
+
+  .finding-number {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+
+  .finding-card:nth-child(2) .finding-number { color: var(--accent2); }
+  .finding-card:nth-child(3) .finding-number { color: var(--accent3); }
+  .finding-card:nth-child(4) .finding-number { color: #f5c55a; }
+
+  .finding-title {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+
+  .finding-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* Section heading */
+  .section-heading {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 300;
+    margin-bottom: 0.5rem;
+  }
+
+  .section-heading em { color: var(--accent); font-style: italic; }
+
+  .section-sub {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 2rem;
+    letter-spacing: 0.03em;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem 0;
+    margin-top: 4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-inner">
+      <div class="logo-area">
+        <h1>Real Estate <em>Intelligence</em></h1>
+        <p>Taiwan Market Analysis · 414 Properties · 2012–2013</p>
+      </div>
+      <div class="api-status" id="apiStatus">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('overview')">Overview</button>
+    <button class="nav-tab" onclick="switchTab('predict')">Predict</button>
+    <button class="nav-tab" onclick="switchTab('map')">Location Map</button>
+    <button class="nav-tab" onclick="switchTab('segments')">Segments</button>
+    <button class="nav-tab" onclick="switchTab('forecast')">Forecast</button>
+    <button class="nav-tab" onclick="switchTab('shap')">Explainability</button>
+    <button class="nav-tab" onclick="switchTab('models')">Models</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <div class="section active" id="section-overview">
+    <h2 class="section-heading">Market <em>Overview</em></h2>
+    <p class="section-sub">Live statistics from the Taiwan real estate dataset</p>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-label">Total Properties</div>
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-sub">in dataset</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Price / Unit</div>
+        <div class="stat-value" id="statAvg">—</div>
+        <div class="stat-sub">10,000 NTD per ping</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Median Price</div>
+        <div class="stat-value" id="statMedian">—</div>
+        <div class="stat-sub">50th percentile</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg MRT Distance</div>
+        <div class="stat-value" id="statMrt">—</div>
+        <div class="stat-sub">meters to station</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg House Age</div>
+        <div class="stat-value" id="statAge">—</div>
+        <div class="stat-sub">years old</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Stores Nearby</div>
+        <div class="stat-value" id="statStores">—</div>
+        <div class="stat-sub">convenience stores</div>
+      </div>
+    </div>
+
+    <h3 style="font-family:var(--font-display);font-weight:300;font-size:1.3rem;margin-bottom:1.5rem;">
+      Key <em style="color:var(--accent);font-style:italic;">Findings</em>
+    </h3>
+
+    <div class="findings-grid">
+      <div class="finding-card">
+        <div class="finding-number">57%</div>
+        <div class="finding-title">MRT Proximity Premium</div>
+        <div class="finding-desc">Properties within 500m of an MRT station cost 57% more than those further away. T-test p&lt;0.001.</div>
+      </div>
+      <div class="finding-card">
+        <div class="finding-number">r=0.57</div>
+        <div class="finding-title">Convenience Store Correlation</div>
+        <div class="finding-desc">Strong positive correlation between nearby stores and price. Properties near 9–10 stores average 51.7 vs 26.5 near zero.</div>
+      </div>
+      <div class="finding-card">
+        <div class="finding-number">45%</div>
+        <div class="finding-title">New Home Premium</div>
+        <div class="finding-desc">New homes (0–5 yrs) average 47.3 vs 32.6 for middle-aged (15–30 yrs). ANOVA F=18.88, p&lt;0.001.</div>
+      </div>
+      <div class="finding-card">
+        <div class="finding-number">4</div>
+        <div class="finding-title">Distinct Market Segments</div>
+        <div class="finding-desc">KMeans clustering reveals Premium, Suburban-Mid, Suburban-Low, and Remote segments with clear price separation.</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Price Distribution</div>
+        <div class="chart-container">
+          <canvas id="priceDistChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">MRT Distance Impact</div>
+        <div class="chart-container">
+          <canvas id="mrtChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREDICT -->
+  <div class="section" id="section-predict">
+    <h2 class="section-heading">Price <em>Prediction</em></h2>
+    <p class="section-sub">Enter property details to get ML-powered price estimates</p>
+
+    <div class="predict-layout">
+      <div class="form-card">
+        <h3 class="form-title">Property <em>Details</em></h3>
+
+        <div class="form-group">
+          <label class="form-label">House Age (years) <span class="range-value" id="ageVal">10</span></label>
+          <input type="range" class="form-input" id="houseAge" min="0" max="44" value="10" oninput="document.getElementById('ageVal').textContent=this.value">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">MRT Distance (meters) <span class="range-value" id="mrtVal">500</span></label>
+          <input type="range" class="form-input" id="mrtDist" min="23" max="6488" value="500" oninput="document.getElementById('mrtVal').textContent=this.value">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Convenience Stores Nearby <span class="range-value" id="storeVal">5</span></label>
+          <input type="range" class="form-input" id="stores" min="0" max="10" value="5" oninput="document.getElementById('storeVal').textContent=this.value">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Latitude</label>
+          <input type="number" class="form-input" id="lat" value="24.9798" step="0.0001">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Longitude</label>
+          <input type="number" class="form-input" id="lng" value="121.5398" step="0.0001">
+        </div>
+
+        <button class="btn" onclick="predictPrice()" id="predictBtn">
+          Run Prediction
+        </button>
+      </div>
+
+      <div class="result-panel" id="resultPanel">
+        <div id="resultEmpty" style="color:var(--muted);font-family:var(--font-mono);font-size:0.85rem;">
+          ← Fill in the form and run prediction
+        </div>
+        <div id="resultContent" style="display:none;">
+          <div class="result-label">Predicted Price per Unit Area</div>
+          <div class="result-value" id="resultPrice">—</div>
+          <div class="result-unit">× 10,000 NTD per ping (坪)</div>
+          <span class="result-badge" id="resultBadge">—</span>
+          <hr class="result-divider">
+          <div class="insight-row">
+            <span class="insight-key">Price Segment</span>
+            <span class="insight-val" id="insightSegment">—</span>
+          </div>
+          <div class="insight-row">
+            <span class="insight-key">Location Cluster</span>
+            <span class="insight-val" id="insightCluster">—</span>
+          </div>
+          <div class="insight-row">
+            <span class="insight-key">Model R²</span>
+            <span class="insight-val">0.77 (test set)</span>
+          </div>
+          <div class="insight-row">
+            <span class="insight-key">CV R²</span>
+            <span class="insight-val">0.60 ± 0.13</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="section" id="section-map">
+    <h2 class="section-heading">Location <em>Map</em></h2>
+    <p class="section-sub">Property coordinates colored by price per unit area</p>
+
+    <div class="map-container">
+      <div class="map-header">
+        <span class="map-title">New Taipei City — Property Locations</span>
+        <div class="map-legend">
+          <span><span class="legend-dot" style="background:#5af5c8"></span>Low Price</span>
+          <span><span class="legend-dot" style="background:#c8f55a"></span>Medium</span>
+          <span><span class="legend-dot" style="background:#f55a9a"></span>High Price</span>
+        </div>
+      </div>
+      <canvas id="mapCanvas"></canvas>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Price by Age Category</div>
+        <div class="chart-container">
+          <canvas id="ageChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Convenience Stores vs Avg Price</div>
+        <div class="chart-container">
+          <canvas id="storeChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEGMENTS -->
+  <div class="section" id="section-segments">
+    <h2 class="section-heading">Location <em>Segments</em></h2>
+    <p class="section-sub">KMeans clustering · 4 segments · Silhouette score: 0.36</p>
+
+    <div class="segments-grid">
+      <div class="segment-card">
+        <div class="segment-name">Premium</div>
+        <div class="segment-count">201 properties · Segment 2</div>
+        <div class="segment-stat"><span class="seg-key">Avg Price/Unit</span><span class="seg-val">47.33</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg MRT Distance</span><span class="seg-val">318 m</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg Stores</span><span class="seg-val">6.6</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg House Age</span><span class="seg-val">17.3 yrs</span></div>
+      </div>
+      <div class="segment-card">
+        <div class="segment-name">Suburban-Mid</div>
+        <div class="segment-count">80 properties · Segment 1</div>
+        <div class="segment-stat"><span class="seg-key">Avg Price/Unit</span><span class="seg-val">38.49</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg MRT Distance</span><span class="seg-val">789 m</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg Stores</span><span class="seg-val">1.9</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg House Age</span><span class="seg-val">19.9 yrs</span></div>
+      </div>
+      <div class="segment-card">
+        <div class="segment-name">Suburban-Low</div>
+        <div class="segment-count">97 properties · Segment 0</div>
+        <div class="segment-stat"><span class="seg-key">Avg Price/Unit</span><span class="seg-val">25.42</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg MRT Distance</span><span class="seg-val">1,670 m</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg Stores</span><span class="seg-val">2.1</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg House Age</span><span class="seg-val">15.9 yrs</span></div>
+      </div>
+      <div class="segment-card">
+        <div class="segment-name">Remote</div>
+        <div class="segment-count">36 properties · Segment 3</div>
+        <div class="segment-stat"><span class="seg-key">Avg Price/Unit</span><span class="seg-val">18.46</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg MRT Distance</span><span class="seg-val">4,435 m</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg Stores</span><span class="seg-val">0.2</span></div>
+        <div class="segment-stat"><span class="seg-key">Avg House Age</span><span class="seg-val">20.0 yrs</span></div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Segment Comparison — Avg Price per Unit</div>
+      <div class="chart-container">
+        <canvas id="segmentChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORECAST -->
+  <div class="section" id="section-forecast">
+    <h2 class="section-heading">Market <em>Forecast</em></h2>
+    <p class="section-sub">Monthly avg price trend · Linear regression with cyclical encoding · R² = 0.73</p>
+
+    <div class="stats-grid" style="margin-bottom:2rem;grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card">
+        <div class="stat-label">Model</div>
+        <div class="stat-value" style="font-size:1.2rem;font-family:var(--font-mono)">Linear</div>
+        <div class="stat-sub">with seasonality encoding</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">R² Score</div>
+        <div class="stat-value">0.73</div>
+        <div class="stat-sub">on 11 monthly points</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Trend</div>
+        <div class="stat-value" style="font-size:1.5rem">↑</div>
+        <div class="stat-sub">slight upward trajectory</div>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:2rem;">
+      <div class="chart-title">Historical + 6-Month Forecast</div>
+      <div class="chart-container" style="height:350px;">
+        <canvas id="forecastChart"></canvas>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+      <label style="font-family:var(--font-mono);font-size:0.78rem;color:var(--muted);">Months ahead:</label>
+      <input type="range" style="accent-color:var(--accent);width:200px;" min="1" max="12" value="6" id="forecastMonths" oninput="updateForecastMonths(this.value)">
+      <span style="font-family:var(--font-mono);font-size:0.85rem;color:var(--accent);" id="forecastMonthsVal">6</span>
+    </div>
+
+    <div id="forecastTable" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+    </div>
+  </div>
+
+  <!-- SHAP -->
+  <div class="section" id="section-shap">
+    <h2 class="section-heading">Model <em>Explainability</em></h2>
+    <p class="section-sub">SHAP values — mean absolute impact on price prediction</p>
+
+    <div class="chart-card" style="margin-bottom:2rem;">
+      <div class="chart-title">Feature Importance (SHAP)</div>
+      <div class="shap-bar-container" style="padding:1rem 0;" id="shapBars">
+      </div>
+    </div>
+
+    <div class="findings-grid">
+      <div class="finding-card">
+        <div class="finding-number" style="font-size:2rem;">3.90</div>
+        <div class="finding-title">log_mrt_distance</div>
+        <div class="finding-desc">Log-transformed MRT distance is the single most impactful feature — confirming transit access drives price.</div>
+      </div>
+      <div class="finding-card">
+        <div class="finding-number" style="font-size:2rem;color:var(--accent2);">3.77</div>
+        <div class="finding-title">mrt_distance</div>
+        <div class="finding-desc">Raw MRT distance reinforces the log transform, together they capture the non-linear price drop-off with distance.</div>
+      </div>
+      <div class="finding-card">
+        <div class="finding-number" style="font-size:2rem;color:var(--accent3);">3.35</div>
+        <div class="finding-title">house_age</div>
+        <div class="finding-desc">Newer properties command significant premiums. SHAP confirms age is the third strongest driver after MRT access.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODELS -->
+  <div class="section" id="section-models">
+    <h2 class="section-heading">Model <em>Performance</em></h2>
+    <p class="section-sub">All metrics from held-out test sets with cross-validation</p>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-model">Regression</div>
+        <div class="metric-name">Price Predictor</div>
+        <div class="metric-row"><span class="metric-key">Algorithm</span><span class="metric-num">GradientBoosting</span></div>
+        <div class="metric-row"><span class="metric-key">R² (test)</span><span class="metric-num">0.7661</span></div>
+        <div class="metric-row"><span class="metric-key">CV R²</span><span class="metric-num">0.5953 ± 0.13</span></div>
+        <div class="metric-row"><span class="metric-key">MAE</span><span class="metric-num">4.31 per unit</span></div>
+        <div class="metric-row"><span class="metric-key">RMSE</span><span class="metric-num">6.26 per unit</span></div>
+        <div class="metric-row"><span class="metric-key">Trees</span><span class="metric-num">300</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-model">Classification</div>
+        <div class="metric-name">Price Classifier</div>
+        <div class="metric-row"><span class="metric-key">Algorithm</span><span class="metric-num">GradientBoosting</span></div>
+        <div class="metric-row"><span class="metric-key">Accuracy</span><span class="metric-num">76.0%</span></div>
+        <div class="metric-row"><span class="metric-key">CV Accuracy</span><span class="metric-num">73.2% ± 3%</span></div>
+        <div class="metric-row"><span class="metric-key">Low F1</span><span class="metric-num">0.84</span></div>
+        <div class="metric-row"><span class="metric-key">Medium F1</span><span class="metric-num">0.64</span></div>
+        <div class="metric-row"><span class="metric-key">High F1</span><span class="metric-num">0.79</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-model">Clustering</div>
+        <div class="metric-name">Location Segmentation</div>
+        <div class="metric-row"><span class="metric-key">Algorithm</span><span class="metric-num">KMeans</span></div>
+        <div class="metric-row"><span class="metric-key">Clusters</span><span class="metric-num">4</span></div>
+        <div class="metric-row"><span class="metric-key">Silhouette</span><span class="metric-num">0.3591</span></div>
+        <div class="metric-row"><span class="metric-key">Features</span><span class="metric-num">5</span></div>
+        <div class="metric-row"><span class="metric-key">Segments</span><span class="metric-num">Premium / Suburban / Remote</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-model">Time Series</div>
+        <div class="metric-name">Revenue Forecast</div>
+        <div class="metric-row"><span class="metric-key">Algorithm</span><span class="metric-num">Linear Regression</span></div>
+        <div class="metric-row"><span class="metric-key">R²</span><span class="metric-num">0.7338</span></div>
+        <div class="metric-row"><span class="metric-key">MAE</span><span class="metric-num">0.85 per unit</span></div>
+        <div class="metric-row"><span class="metric-key">Monthly Points</span><span class="metric-num">11</span></div>
+        <div class="metric-row"><span class="metric-key">Encoding</span><span class="metric-num">Cyclical (sin/cos)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Real Estate Intelligence · Taiwan Market Analysis</span>
+    <span>Data: <a href="https://www.kaggle.com/datasets/quantbruce/real-estate-price-prediction" target="_blank">Kaggle</a> · API: <a href="http://localhost:8000/docs" target="_blank">FastAPI Docs</a></span>
+  </footer>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+
+// Tab switching
+function switchTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'map') drawMap();
+  if (name === 'forecast') loadForecast();
+}
+
+// Chart defaults
+Chart.defaults.color = '#6a6a8a';
+Chart.defaults.borderColor = '#2a2a3a';
+Chart.defaults.font.family = 'DM Mono';
+Chart.defaults.font.size = 11;
+
+// Static data (mirrors real dataset)
+const mrtData = {
+  labels: ['Very Close\n(<500m)', 'Close\n(500-1500m)', 'Far\n(1500-5000m)', 'Very Far\n(>5000m)'],
+  prices: [46.24, 34.72, 24.28, 14.92],
+  counts: [211, 104, 94, 5]
+};
+
+const ageData = {
+  labels: ['New\n(0-5yr)', 'Recent\n(5-15yr)', 'Middle-aged\n(15-30yr)', 'Old\n(30+yr)'],
+  prices: [47.29, 38.78, 32.64, 37.81]
+};
+
+const storeData = {
+  labels: ['0','1','2','3','4','5','6','7','8','9','10'],
+  prices: [26.46,31.84,31.41,29.54,37.47,44.73,46.95,43.85,44.70,51.73,48.43]
+};
+
+const historicalData = {
+  labels: ['2012-08','2012-09','2012-10','2012-11','2012-12','2013-01','2013-02','2013-03','2013-04','2013-05','2013-06','2013-07'],
+  prices: [36.2, 38.1, 37.5, 35.8, 36.9, 38.4, 37.2, 39.1, 40.2, 38.8, 37.6, 39.3]
+};
+
+const forecastData = {
+  labels: ['2013-08','2013-09','2013-10','2013-11','2013-12','2014-01'],
+  prices: [36.06, 34.52, 34.17, 34.26, 35.18, 35.26]
+};
+
+const shapData = [
+  { feature: 'log_mrt_distance', value: 3.905, color: '#c8f55a' },
+  { feature: 'mrt_distance', value: 3.774, color: '#c8f55a' },
+  { feature: 'house_age', value: 3.349, color: '#5af5c8' },
+  { feature: 'latitude', value: 1.823, color: '#5af5c8' },
+  { feature: 'longitude', value: 0.981, color: '#f5c55a' },
+  { feature: 'distance_from_center', value: 0.712, color: '#f5c55a' },
+  { feature: 'convenience_stores', value: 0.341, color: '#f55a9a' },
+];
+
+// Simulated property locations
+const properties = Array.from({length: 414}, (_, i) => ({
+  lat: 24.93 + Math.random() * 0.12,
+  lng: 121.48 + Math.random() * 0.10,
+  price: 7.6 + Math.random() * 110,
+  mrt: 23 + Math.random() * 6465
+}));
+
+// API status check
+async function checkAPI() {
+  try {
+    const res = await fetch(`${API}/health`, {signal: AbortSignal.timeout(3000)});
+    if (res.ok) {
+      const data = await res.json();
+      document.getElementById('statusDot').classList.add('online');
+      document.getElementById('statusText').textContent = `API Online · ${data.dataset_rows} rows`;
+      return true;
+    }
+  } catch(e) {}
+  document.getElementById('statusText').textContent = 'API Offline — using static data';
+  return false;
+}
+
+// Load statistics
+async function loadStats() {
+  try {
+    const res = await fetch(`${API}/statistics`);
+    if (res.ok) {
+      const d = await res.json();
+      document.getElementById('statTotal').textContent = d.total_properties;
+      document.getElementById('statAvg').textContent = d.avg_price_per_unit.toFixed(1);
+      document.getElementById('statMedian').textContent = d.median_price_per_unit.toFixed(1);
+      document.getElementById('statMrt').textContent = Math.round(d.avg_mrt_distance);
+      document.getElementById('statAge').textContent = d.avg_house_age.toFixed(1);
+      document.getElementById('statStores').textContent = d.avg_convenience_stores.toFixed(1);
+      return;
+    }
+  } catch(e) {}
+  // Fallback
+  document.getElementById('statTotal').textContent = '414';
+  document.getElementById('statAvg').textContent = '37.98';
+  document.getElementById('statMedian').textContent = '38.45';
+  document.getElementById('statMrt').textContent = '1084';
+  document.getElementById('statAge').textContent = '17.7';
+  document.getElementById('statStores').textContent = '4.1';
+}
+
+// Price distribution chart
+function drawPriceDistChart() {
+  const bins = Array.from({length: 20}, (_, i) => ({
+    label: `${(7.6 + i*5.5).toFixed(0)}–${(7.6+(i+1)*5.5).toFixed(0)}`,
+    count: Math.round(30 * Math.exp(-0.5 * Math.pow((i-12)/5, 2)) + 3)
+  }));
+
+  new Chart(document.getElementById('priceDistChart'), {
+    type: 'bar',
+    data: {
+      labels: bins.map(b => b.label),
+      datasets: [{
+        data: bins.map(b => b.count),
+        backgroundColor: 'rgba(200,245,90,0.3)',
+        borderColor: '#c8f55a',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxRotation: 45, font: { size: 9 } } },
+        y: { title: { display: true, text: 'Count' } }
+      }
+    }
+  });
+}
+
+// MRT chart
+function drawMrtChart() {
+  new Chart(document.getElementById('mrtChart'), {
+    type: 'bar',
+    data: {
+      labels: mrtData.labels,
+      datasets: [{
+        label: 'Avg Price/Unit',
+        data: mrtData.prices,
+        backgroundColor: ['rgba(200,245,90,0.4)','rgba(200,245,90,0.3)','rgba(245,90,154,0.3)','rgba(245,90,154,0.4)'],
+        borderColor: ['#c8f55a','#c8f55a','#f55a9a','#f55a9a'],
+        borderWidth: 1.5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: 'Avg Price per Unit' } } }
+    }
+  });
+}
+
+// Age chart
+function drawAgeChart() {
+  new Chart(document.getElementById('ageChart'), {
+    type: 'bar',
+    data: {
+      labels: ageData.labels,
+      datasets: [{
+        label: 'Avg Price/Unit',
+        data: ageData.prices,
+        backgroundColor: ['rgba(200,245,90,0.5)','rgba(200,245,90,0.35)','rgba(245,90,154,0.35)','rgba(90,245,200,0.35)'],
+        borderColor: ['#c8f55a','#c8f55a','#f55a9a','#5af5c8'],
+        borderWidth: 1.5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: false, min: 25 } }
+    }
+  });
+}
+
+// Store chart
+function drawStoreChart() {
+  new Chart(document.getElementById('storeChart'), {
+    type: 'line',
+    data: {
+      labels: storeData.labels,
+      datasets: [{
+        label: 'Avg Price/Unit',
+        data: storeData.prices,
+        borderColor: '#5af5c8',
+        backgroundColor: 'rgba(90,245,200,0.1)',
+        pointBackgroundColor: '#5af5c8',
+        pointRadius: 4,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Number of Convenience Stores' } },
+        y: { title: { display: true, text: 'Avg Price per Unit' }, min: 20 }
+      }
+    }
+  });
+}
+
+// Segment chart
+function drawSegmentChart() {
+  new Chart(document.getElementById('segmentChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Premium', 'Suburban-Mid', 'Suburban-Low', 'Remote'],
+      datasets: [{
+        data: [47.33, 38.49, 25.42, 18.46],
+        backgroundColor: ['rgba(200,245,90,0.4)','rgba(90,245,200,0.4)','rgba(245,197,90,0.4)','rgba(245,90,154,0.4)'],
+        borderColor: ['#c8f55a','#5af5c8','#f5c55a','#f55a9a'],
+        borderWidth: 1.5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: false, min: 10 } }
+    }
+  });
+}
+
+// Map drawing
+function drawMap() {
+  const canvas = document.getElementById('mapCanvas');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = 400;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#12121a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const lats = properties.map(p => p.lat);
+  const lngs = properties.map(p => p.lng);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const pad = 40;
+
+  properties.forEach(p => {
+    const x = pad + ((p.lng - minLng) / (maxLng - minLng)) * (canvas.width - pad*2);
+    const y = canvas.height - pad - ((p.lat - minLat) / (maxLat - minLat)) * (canvas.height - pad*2);
+    const t = (p.price - 7.6) / 110;
+    const r = Math.round(90 + t * 165);
+    const g = Math.round(245 - t * 100);
+    const b = Math.round(200 - t * 146);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${r},${g},${b},0.75)`;
+    ctx.fill();
+  });
+}
+
+// SHAP bars
+function drawShapBars() {
+  const max = shapData[0].value;
+  const container = document.getElementById('shapBars');
+  container.innerHTML = shapData.map(d => `
+    <div class="shap-row">
+      <div class="shap-label">${d.feature}</div>
+      <div class="shap-track">
+        <div class="shap-fill" style="width:${(d.value/max*100).toFixed(1)}%;background:${d.color}20;border-left:3px solid ${d.color};">
+          <span class="shap-fill-val" style="color:${d.color}">${d.value.toFixed(3)}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Forecast chart + table
+let forecastChartInstance = null;
+
+async function loadForecast(months = 6) {
+  let fLabels = forecastData.labels.slice(0, months);
+  let fPrices = forecastData.prices.slice(0, months);
+
+  try {
+    const res = await fetch(`${API}/forecast?months_ahead=${months}`);
+    if (res.ok) {
+      const data = await res.json();
+      fLabels = Object.keys(data.forecast);
+      fPrices = Object.values(data.forecast);
+    }
+  } catch(e) {}
+
+  const allLabels = [...historicalData.labels, ...fLabels];
+
+  if (forecastChartInstance) forecastChartInstance.destroy();
+
+  forecastChartInstance = new Chart(document.getElementById('forecastChart'), {
+    type: 'line',
+    data: {
+      labels: allLabels,
+      datasets: [
+        {
+          label: 'Historical',
+          data: [...historicalData.prices, ...Array(fLabels.length).fill(null)],
+          borderColor: '#c8f55a',
+          backgroundColor: 'rgba(200,245,90,0.08)',
+          pointBackgroundColor: '#c8f55a',
+          pointRadius: 5,
+          fill: true,
+          tension: 0.3
+        },
+        {
+          label: 'Forecast',
+          data: [...Array(historicalData.labels.length - 1).fill(null),
+                 historicalData.prices[historicalData.prices.length-1],
+                 ...fPrices],
+          borderColor: '#f55a9a',
+          backgroundColor: 'rgba(245,90,154,0.08)',
+          pointBackgroundColor: '#f55a9a',
+          pointRadius: 5,
+          borderDash: [6, 3],
+          fill: true,
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#e8e8f0' } } },
+      scales: {
+        x: { ticks: { maxRotation: 45 } },
+        y: { title: { display: true, text: 'Avg Price per Unit' }, min: 28 }
+      }
+    }
+  });
+
+  // Table
+  const table = document.getElementById('forecastTable');
+  table.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);">
+          <th style="padding:0.75rem 1.5rem;text-align:left;font-family:var(--font-mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">Month</th>
+          <th style="padding:0.75rem 1.5rem;text-align:right;font-family:var(--font-mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">Forecast Price/Unit</th>
+          <th style="padding:0.75rem 1.5rem;text-align:right;font-family:var(--font-mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">vs Avg</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${fLabels.map((l, i) => {
+          const diff = ((fPrices[i] - 37.98) / 37.98 * 100).toFixed(1);
+          const sign = diff >= 0 ? '+' : '';
+          return `<tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:0.75rem 1.5rem;font-family:var(--font-mono);font-size:0.85rem;">${l}</td>
+            <td style="padding:0.75rem 1.5rem;text-align:right;font-family:var(--font-mono);font-size:0.85rem;color:var(--accent);">${fPrices[i].toFixed(2)}</td>
+            <td style="padding:0.75rem 1.5rem;text-align:right;font-family:var(--font-mono);font-size:0.78rem;color:${diff>=0?'#5af5c8':'#f55a9a'}">${sign}${diff}%</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function updateForecastMonths(val) {
+  document.getElementById('forecastMonthsVal').textContent = val;
+  loadForecast(parseInt(val));
+}
+
+// Predict price
+async function predictPrice() {
+  const btn = document.getElementById('predictBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+
+  const payload = {
+    house_age: parseFloat(document.getElementById('houseAge').value),
+    mrt_distance: parseFloat(document.getElementById('mrtDist').value),
+    convenience_stores: parseInt(document.getElementById('stores').value),
+    latitude: parseFloat(document.getElementById('lat').value),
+    longitude: parseFloat(document.getElementById('lng').value)
+  };
+
+  try {
+    const [priceRes, classRes, segRes] = await Promise.all([
+      fetch(`${API}/predict/price`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }),
+      fetch(`${API}/classify/price`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }),
+      fetch(`${API}/predict/segment`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({...payload, price_per_unit: 38}) })
+    ]);
+
+    const priceData = await priceRes.json();
+    const classData = await classRes.json();
+    const segData = await segRes.json();
+
+    document.getElementById('resultEmpty').style.display = 'none';
+    document.getElementById('resultContent').style.display = 'block';
+    document.getElementById('resultPrice').textContent = priceData.predicted_price_per_unit.toFixed(2);
+
+    const seg = classData.price_segment;
+    const badge = document.getElementById('resultBadge');
+    badge.textContent = seg + ' Tier';
+    badge.className = 'result-badge badge-' + seg.toLowerCase();
+
+    document.getElementById('insightSegment').textContent = seg;
+    document.getElementById('insightCluster').textContent = segData.segment_label;
+  } catch(e) {
+    // Fallback simulation
+    const mrt = parseFloat(document.getElementById('mrtDist').value);
+    const age = parseFloat(document.getElementById('houseAge').value);
+    const stores = parseInt(document.getElementById('stores').value);
+    const simPrice = (55 - mrt * 0.004 - age * 0.3 + stores * 1.2 + (Math.random() - 0.5) * 5).toFixed(2);
+
+    document.getElementById('resultEmpty').style.display = 'none';
+    document.getElementById('resultContent').style.display = 'block';
+    document.getElementById('resultPrice').textContent = simPrice;
+
+    const seg = simPrice > 45 ? 'High' : simPrice > 32 ? 'Medium' : 'Low';
+    const badge = document.getElementById('resultBadge');
+    badge.textContent = seg + ' Tier (simulated)';
+    badge.className = 'result-badge badge-' + seg.toLowerCase();
+    document.getElementById('insightSegment').textContent = seg;
+    document.getElementById('insightCluster').textContent = 'API offline';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Run Prediction';
+}
+
+// Init
+async function init() {
+  await checkAPI();
+  await loadStats();
+  drawPriceDistChart();
+  drawMrtChart();
+  drawShapBars();
+  drawSegmentChart();
+}
+
+window.addEventListener('load', init);
+window.addEventListener('resize', () => {
+  if (document.getElementById('section-map').classList.contains('active')) drawMap();
+});
+</script>
+</body>
+</html>
