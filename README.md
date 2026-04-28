@@ -1,124 +1,158 @@
 # Real Estate Market Analysis
 
-End-to-end machine learning project analyzing Taiwan's real estate market.
-Predicts property prices, classifies price tiers, segments locations,
-and forecasts market trends — served via a production REST API.
+> End-to-end machine learning project analyzing Taiwan's real estate market —
+> price prediction, tier classification, location segmentation, and trend forecasting,
+> served via a production REST API with an interactive dashboard.
+
+[![CI](https://github.com/emanrissha/real-estate-market-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/emanrissha/real-estate-market-analysis/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Tests](https://img.shields.io/badge/tests-59%20passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
-## Dataset
-**Taiwan Real Estate Dataset** — 414 properties, New Taipei City (2012–2013)  
-Source: [Kaggle](https://www.kaggle.com/datasets/quantbruce/real-estate-price-prediction)
+## Overview
 
-Features: transaction date, house age, MRT distance,
-convenience stores, GPS coordinates, price per unit area.
+| | |
+|---|---|
+| **Dataset** | Taiwan Real Estate — 414 properties, New Taipei City (2012–2013) |
+| **Source** | [Kaggle](https://www.kaggle.com/datasets/quantbruce/real-estate-price-prediction) |
+| **Models** | 4 (regression, classification, clustering, time series) |
+| **API** | 7 FastAPI endpoints with Pydantic validation |
+| **Tests** | 59 passing across all layers |
+| **Explainability** | SHAP feature importance |
+
+---
+
+## Key Findings
+
+| Finding | Value | Significance |
+|---|---|---|
+| MRT proximity premium | **57% higher price** within 500m | t=16.02, p<0.001 |
+| Convenience store correlation | **r = 0.57** | p<0.001 (strong) |
+| New home premium | **45% above** middle-aged homes | F=18.88, p<0.001 |
+| Market segments | **4 distinct clusters** | Silhouette = 0.36 |
+
+→ See [RESULTS.md](RESULTS.md) for the full analysis report.
+
+---
+
+## Model Performance
+
+| Model | Algorithm | Primary Metric | Score |
+|---|---|---|---|
+| Price Predictor | GradientBoosting | R² / CV R² | 0.77 / 0.60 |
+| Price Classifier | GradientBoosting | Accuracy / CV | 76% / 73% |
+| Location Segmentation | KMeans | Silhouette | 0.36 |
+| Time Series Forecast | Linear Regression | R² | 0.73 |
+
+**Top SHAP features:** `log_mrt_distance` (3.90) → `mrt_distance` (3.77) → `house_age` (3.35)
 
 ---
 
 ## Quick Start
 
-### 1. Clone
+**1. Clone and install**
 ```bash
-git clone https://github.com/yourusername/real-estate-market-analysis.git
+git clone https://github.com/emanrissha/real-estate-market-analysis.git
 cd real-estate-market-analysis
-```
-
-### 2. Install
-```bash
 pip install -r requirements.txt
 ```
 
-### 3. Run Pipeline
+**2. Run the full pipeline**
 ```bash
 python scripts/run_pipeline.py
 ```
 
-### 4. Train Models
+**3. Train all models**
 ```bash
 python scripts/train_models.py
 ```
 
-### 5. Start API
+**4. Start the API**
 ```bash
 uvicorn src.api.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 6. Run Tests
+**5. Launch the dashboard**
+```bash
+cd src/frontend && python -m http.server 3000
+# Open http://localhost:3000
+```
+
+**6. Run tests**
 ```bash
 pytest tests/ -v
 ```
 
-### 7. Docker
+**7. Docker (API + frontend together)**
 ```bash
 docker-compose -f docker/docker-compose.yml up
 ```
 
 ---
 
-## Project Structure
-├── data/               # Raw + processed data
-├── src/
-│   ├── data/           # Loader + preprocessor
-│   ├── models/         # 4 ML models
-│   ├── explainability/ # SHAP explainer
-│   ├── analysis/       # Insights + statistical tests
-│   ├── visualization/  # Chart generation
-│   └── api/            # FastAPI app
-├── models/             # Saved model files
-├── reports/            # CSVs + figures
-├── tests/              # 35+ unit tests
-├── scripts/            # Pipeline + training scripts
-└── docker/             # Dockerfiles + compose
-
----
-
 ## API Endpoints
+
+Base URL: `http://localhost:8000` — Interactive docs at `/docs`
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/` | API info |
-| GET | `/health` | Health check + model status |
+| GET | `/` | API info and available endpoints |
+| GET | `/health` | Health check + model load status |
 | GET | `/statistics` | Dataset summary statistics |
 | POST | `/predict/price` | Predict price per unit area |
-| POST | `/classify/price` | Classify as Low/Medium/High |
-| POST | `/predict/segment` | Predict location segment |
-| GET | `/forecast` | Revenue forecast (N months) |
+| POST | `/classify/price` | Classify property as Low / Medium / High |
+| POST | `/predict/segment` | Predict location cluster |
+| GET | `/forecast?months_ahead=6` | Monthly price forecast |
 
-API docs available at `http://localhost:8000/docs`
-
----
-
-## Model Performance
-
-| Model | Metric | Score |
-|---|---|---|
-| Price Predictor (GradientBoosting) | R² | 0.77 |
-| Price Predictor | CV R² | 0.60 ± 0.13 |
-| Price Classifier | Accuracy | 76% |
-| Price Classifier | CV Accuracy | 73% ± 3% |
-| Location Segmentation (KMeans) | Silhouette | 0.36 |
-| Time Series Forecast | R² | 0.73 |
+**Example request:**
+```bash
+curl -X POST http://localhost:8000/predict/price \
+  -H "Content-Type: application/json" \
+  -d '{"house_age": 10, "mrt_distance": 300, "convenience_stores": 5, "latitude": 24.983, "longitude": 121.540}'
+```
 
 ---
 
-## Key Findings
-- **MRT proximity is the #1 price driver** — properties within 500m cost 57% more
-- **Convenience stores strongly correlate with price** — r=0.57, p<0.001
-- **New homes command 45% premium** over middle-aged properties
-- **4 distinct market segments** identified by location + price + amenities
+## Project Structure
 
-See [RESULTS.md](RESULTS.md) for full analysis.
+```
+real-estate-market-analysis/
+├── data/
+│   ├── raw/                    # Source CSV (Kaggle)
+│   └── processed/              # Generated by pipeline
+├── src/
+│   ├── data/                   # Loader + preprocessor
+│   ├── models/                 # 4 ML models
+│   ├── explainability/         # SHAP explainer
+│   ├── analysis/               # Insights + statistical tests
+│   ├── visualization/          # Chart generation (7 figures)
+│   ├── api/                    # FastAPI app + schemas + endpoints
+│   └── frontend/               # Interactive HTML dashboard
+├── models/                     # Saved .pkl model files
+├── reports/
+│   ├── figures/                # Generated PNG charts
+│   └── *.csv                   # Analysis reports
+├── tests/                      # 59 unit tests
+├── scripts/                    # run_pipeline.py + train_models.py
+├── docker/                     # Dockerfile.api + Dockerfile.frontend
+├── .github/workflows/          # CI + deploy pipelines
+├── RESULTS.md                  # Full findings report
+└── README.md
+```
 
 ---
 
 ## Technologies
 
-| Category | Tools |
+| Layer | Tools |
 |---|---|
-| Data | pandas, numpy |
-| ML | scikit-learn, scipy |
+| Data Processing | pandas, numpy |
+| Machine Learning | scikit-learn, scipy |
 | Explainability | SHAP |
 | API | FastAPI, uvicorn, pydantic |
+| Frontend | HTML, CSS, JavaScript, Chart.js |
 | Testing | pytest, httpx |
 | Visualization | matplotlib |
 | Deployment | Docker, GitHub Actions |
@@ -126,4 +160,5 @@ See [RESULTS.md](RESULTS.md) for full analysis.
 ---
 
 ## License
-MIT
+
+MIT — see [LICENSE](LICENSE) for details.
